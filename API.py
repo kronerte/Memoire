@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import matplotlib.pyplot as plt
 from scipy.stats import norm 
+from scipy.stats import shapiro
 
 # Kernel functions
 gaussian = lambda sigma: lambda x,y : np.exp(-np.linalg.norm(x-y,axis=1)**2/(2*sigma))
@@ -119,7 +120,7 @@ def sampleMMD(kernel, law_p, law_q, m, n,repeat = 1000):
 def moyenne(kernel, X_, Y, repeat=100):
     mmd = np.zeros(repeat)
     for i in range(repeat):
-        MMD = OMMD(kernel,np.random.choice(X_.flatten(), size = 1000, replace=True).reshape((-1,1)))
+        MMD = OMMD(kernel,np.random.choice(X_.flatten(), size = 100, replace=True).reshape((-1,1)))
         MMD.fit(np.random.choice(Y.flatten(), size = 100, replace=True).reshape((-1,1)))
         mmd[i] = MMD.MMD
         #print(f"Progression {(i/repeat)*100:.0f}%", end="\r", flush=True)
@@ -129,22 +130,22 @@ def est_partial_mean(kernel, X, y):
     return np.mean(kernel(y, X))
 
 
-def estim_V(kernel, X, Y, repeat=100):
+def estim_V(kernel, X, Y, repeat=1000):
     echantillions = np.zeros(repeat)
     for i in range(repeat):
         x1 = np.random.choice(X.flatten(), size = 1, replace=True).reshape((-1,1))
         x2 = np.random.choice(X.flatten(), size = 1, replace=True).reshape((-1,1))
-        Y_1 = np.random.choice(Y.flatten(), size = 1000, replace=True).reshape((-1,1))
-        Y_2 = np.random.choice(Y.flatten(), size = 1000, replace=True).reshape((-1,1))
+        Y_1 = np.random.choice(Y.flatten(), size = 100, replace=True).reshape((-1,1))
+        Y_2 = np.random.choice(Y.flatten(), size = 100, replace=True).reshape((-1,1))
         echantillions[i] = kernel(x1,x2) - est_partial_mean(kernel, x1, Y_1) - est_partial_mean(kernel, x2, Y_2)
     return echantillions.var()
 
-def var_H(kernel, X, Y, alpha, size=1000):
+def var_H(kernel, X, Y, alpha, size=100):
     return estim_V(kernel, X, Y) + 1/alpha*estim_V(kernel, Y, X)
 
 def V1V0(sigma_H0, alpha, sigma_H1):
     """ Renvoie le premier terme de l'élément à optimiser"""
-    return sigma_H1*inv_phi(1 - alpha)/sigma_H0
+    return sigma_H0*inv_phi(1 - alpha)/sigma_H1
 def MV(m, MMD_H1, sigma_H1):
     """ Renvoie le deuxième terme de l'élément à optimiser"""
     return np.sqrt(m/2)*MMD_H1/sigma_H1
@@ -162,10 +163,10 @@ def line_optimisation(law_H0, law_H1, Lambda, kernel, kernel_params, m, alpha):
         X = law_H0(10000)
         Y = law_H1(10000)
                     
-        sigma_H0[i] = np.sqrt(var_H(kernel(param), X, X, Lambda, size=500))
-        sigma_H1[i] = np.sqrt(var_H(kernel(param), X, Y, Lambda, size=500))
-        moyenne_H1[i] = moyenne(kernel(param), X, Y, repeat=500)
-        print(f"Progression {(i/size)*100:.0f}%", end="\r", flush=True)
+        sigma_H0[i] = np.sqrt(var_H(kernel(param), X, X, Lambda, size=100))
+        sigma_H1[i] = np.sqrt(var_H(kernel(param), X, Y, Lambda, size=100))
+        moyenne_H1[i] = moyenne(kernel(param), X, Y, repeat=100)
+        print(f"Progression {((i+1)/size)*100:.0f}%", end="\r", flush=True)
         
     V1V0_ = V1V0(sigma_H0, alpha, sigma_H1)
     MV_ = MV(m, moyenne_H1, sigma_H1)
@@ -184,7 +185,21 @@ def normality_test(kernel, law_p, law_q, m, n):
     mean = moyenne(kernel,X, Y)
     sample_renormed = (sample-mean)*np.sqrt(m/(2*var))
     plt.hist(sample_renormed,density=True,bins=15);
+    x = np.linspace(-4,4,1000)
     plt.plot(x,norm.pdf(x))
     return shapiro(sample)
+
+# Experiments
+def one_line_experiment(law_p, law_q, kernel, kernel_params, m=10000,Lambda=.1, alpha=0.05):
+    
+    sigma_H0, sigma_H1, moyenne_H1, V1V0_, MV_, opt = line_optimisation(law_p, 
+                                                                        law_q,Lambda, kernel, kernel_params, m, alpha)
+    plt.plot(kernel_params, sigma_H0, label="sigma_H0")
+    plt.plot(kernel_params, sigma_H1, label="sigma_H1")
+    plt.plot(kernel_params, moyenne_H1, label="moyenne_H1")
+    plt.plot(kernel_params, V1V0_, label="V1V0")
+    plt.plot(kernel_params, MV_, label="MV")
+    plt.plot(kernel_params, opt, label="opt")
+    plt.legend()
         
 
