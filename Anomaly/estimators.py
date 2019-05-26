@@ -157,25 +157,32 @@ def MV_MC(kernel, law_p, law_q, n_boot = 100, repeat=100, n_boot_sh1=100,finalSa
     sigma_H1 = np.sqrt(var_OMMD_MC(kernel, law_p, law_q, n_boot = n_boot_sh1, finalSampleSize=finalSampleSize, verbose = verbose))
     return mean_H1/sigma_H1
 
-def score_MC_Bt(kernel, law_p, law_q, m, alpha,n_boot_sigma=100, n_repeat_sigma=100,n_boot_mean=100, n_repeat_mean=100,  verbose = 1):
+def score_MC(kernel, law_p, law_q, m, alpha,n_boot_sigma=100, n_repeat_sigma=100,n_boot_mean=100, n_repeat_mean=100,  verbose = 1):
     if verbose > 0:
         print("Start computing sigma under H0")
-    sigma_H0 = np.sqrt(var_OMMD_MC(kernel, law_p, law_p, n_boot = n_boot_sigma, finalSampleSize=n_repeat_sigma, verbose = verbose))
+    sigma_H0 = np.sqrt(var_OMMD_MC(kernel, law_p, law_p, size_gen = n_boot_sigma, finalSampleSize=n_repeat_sigma, verbose = verbose))
     if verbose > 0:
         print("Start computing sigma under H1")
-    sigma_H1 = np.sqrt(var_OMMD_MC(kernel, law_p, law_q, n_boot = n_boot_sigma, finalSampleSize=n_repeat_sigma, verbose = verbose))
+    sigma_H1 = np.sqrt(var_OMMD_MC(kernel, law_p, law_q, size_gen = n_boot_sigma, finalSampleSize=n_repeat_sigma, verbose = verbose))
     if verbose > 0:
         print("Start computing Mean under H1")
     mean_H1 = moyenneMMD_MC(MMD.OMMD, kernel, law_p, law_q, n_boot_mean, n_boot_mean, repeat=n_repeat_mean, verbose=verbose)
-    return np.sqrt(m/2)*mean_H1 - inv_phi(1-alpha)*sigma_H0/sigma_H1
+    return np.sqrt(m/2)*mean_H1 -  utils.inv_phi(1-alpha)*sigma_H0/sigma_H1
 
-def puissance_MC(kernel, law_p, law_q, threshold, repeat=1000):
-    repeat = 1000
-    mmd = np.zeros(repeat)
-    for i in range(repeat):
-        MMD = OMMD(kernel)
-        MMD.fit(law_q(100), law_p(1000))
-        mmd[i] = MMD.MMD
-    return (mmd<t).mean()
+
+
+def threshold_MC(kernel, law_p, law_q, m, n, alpha, size_gen = 100, finalSampleSize=1000, verbose = 1):
+    sigma = np.sqrt( var_OMMD_MC(kernel, law_p, law_q, size_gen = size_gen,Lambda = n/m, finalSampleSize=finalSampleSize, verbose = verbose))
+    invPhiAlpha = utils.inv_phi(1-alpha)
+    return sigma*invPhiAlpha/np.sqrt(m)
+
+
+
+
+def puissance_MC(methodeMMD, kernel, law_p, law_q, m, n, threshold, repeat=1000):
+    mmd =sampleMMD_MC(methodeMMD, kernel, law_p, law_q, m, n, finalSampleSize = 1000, verbose=1)
+    return (mmd<threshold).mean()
+
+
     
     

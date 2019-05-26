@@ -13,7 +13,7 @@ import Anomaly.estimators as estimators
 import Anomaly.MMD as MMD
 from scipy.stats import shapiro, norm
 import matplotlib.pyplot as plt
-
+from sklearn import metrics 
 
 class Experiment():
     def __init__(self, **kargs):
@@ -81,7 +81,16 @@ class Shapiro(Experiment):
         plt.title("p-value for a Shapiro test")
 
 
-
+def courbe_ROC(kernel_list, law_p, law_q, m, n, sample_size):
+    for i in range(len(kernel_list)):
+        y = np.zeros(2000)
+        y[:1000] = 1
+        scores = np.zeros(2000)
+        scores[:1000] = estimators.sampleMMD_MC(MMD.OMMD, kernel_list[i], law_p, law_q, m, n)
+        scores[1000:] = estimators.sampleMMD_MC(MMD.OMMD, kernel_list[i], law_p, law_p, m, n)
+        fpr, tpr, thresholds = metrics.roc_curve(y, scores)
+        plt.plot(fpr, tpr, label=f"kernel num {i}; AUC = {metrics.auc(fpr, tpr):.2f}")
+    plt.legend()
 """def line_optimisation(law_H0, law_H1, Lambda, kernel, kernel_params, m, alpha):
     size = len(kernel_params)
     sigma_H0 = np.zeros(size)
