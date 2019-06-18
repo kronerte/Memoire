@@ -10,7 +10,7 @@ charatectics kernels
 """
 import numpy as np
 
-
+polynomial = lambda c, d:lambda x,y : (np.sum(x*y,axis=1) + c)**d
 gaussian = lambda sigma: lambda x,y : np.exp(-np.linalg.norm(x-y,axis=1)**2/(2*sigma))
 laplacian = lambda sigma: lambda x,y : np.exp(-sigma*np.linalg.norm(x-y,axis=1,ord=1))
 

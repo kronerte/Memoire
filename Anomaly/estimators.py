@@ -119,10 +119,9 @@ def partial_varianceOMMD_MC(kernel,  law_p, law_q, size_gen = 100, finalSampleSi
     for i in range(finalSampleSize):
         if verbose > 0:
             print(i/finalSampleSize*100, '% achevé',end='\r',flush=True)
-        for i in range(finalSampleSize):
-            x1 = law_p(1)
-            x2 = law_p(1)
-            sample[i] = kernel(x1,x2) -  meanEmbeding_MC(kernel, x1, law_q, size_gen = size_gen) -  meanEmbeding_MC(kernel, x2, law_q, size_gen = size_gen)
+        x1 = law_p(1)
+        x2 = law_p(1)
+        sample[i] = kernel(x1,x2) -  meanEmbeding_MC(kernel, x1, law_q, size_gen = size_gen) -  meanEmbeding_MC(kernel, x2, law_q, size_gen = size_gen)
     return sample.var()
 
 
@@ -174,14 +173,14 @@ def score_MC(kernel, law_p, law_q, m, alpha,n_boot_sigma=100, n_repeat_sigma=100
 def threshold_MC(kernel, law_p, law_q, m, n, alpha, size_gen = 100, finalSampleSize=1000, verbose = 1):
     sigma = np.sqrt( var_OMMD_MC(kernel, law_p, law_q, size_gen = size_gen,Lambda = n/m, finalSampleSize=finalSampleSize, verbose = verbose))
     invPhiAlpha = utils.inv_phi(1-alpha)
-    return sigma*invPhiAlpha/np.sqrt(m)
+    return sigma*invPhiAlpha/np.sqrt(m/2)
 
 
 
 
 def puissance_MC(methodeMMD, kernel, law_p, law_q, m, n, threshold, repeat=1000):
     mmd =sampleMMD_MC(methodeMMD, kernel, law_p, law_q, m, n, finalSampleSize = 1000, verbose=1)
-    return (mmd<threshold).mean()
+    return (mmd>threshold).mean()
 
 
     
