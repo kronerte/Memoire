@@ -9,6 +9,7 @@ charatectics kernels
 @author: kronert
 """
 import numpy as np
+import copy
 ### DEPRECATED
 # polynomial = lambda c, d:lambda X,Y : (np.sum(X*Y,axis=1) + c)**d
 #gaussian = lambda sigma: lambda X,Y : np.exp(-np.linalg.norm(X-Y,axis=1)**2/(2*sigma))
@@ -57,7 +58,26 @@ class Kernel():
 
     def flat_compute(self, X,Y):
         return None
-        
+
+    def __add__(self, other):
+        return CCK([self, other], [1,1])
+
+    def __radd__(self, other):
+        return CCK([self, other], [1,1])
+
+
+    def __rmul__(self, other):
+        if type(other) in (int, float):
+            return CCK([self], [other])
+
+    def __eq__(self, other):
+        """Overrides the default implementation"""
+        if isinstance(other, Kernel):
+            return (self.Name == other.Name and self.parameters == other.parameters)
+
+        return False
+
+
 
 
 
@@ -114,6 +134,7 @@ class CCK(Kernel):
         self.kernels = ListeKernel
         self.weights = ListeWeights
         self.nb = len(ListeKernel)
+        self.reduce_flatten()
     
     def __call__(self, X, Y):
         sum = 0
@@ -126,4 +147,57 @@ class CCK(Kernel):
         for k,w in zip(self.kernels,self.weights):
             sum += f" {w}; {k} || "
         return sum
+
+
+    def flatten(self):
+        new_kernels_list = []
+        new_weights_list = []
+
+        kernels_to_visit = copy.deepcopy(self.kernels)
+        corresponding_weights = copy.deepcopy(self.weights)
+
+        nodes_to_visit = list(zip(kernels_to_visit, corresponding_weights))
+
+        for k,w in  nodes_to_visit:
+            if k.Name == "Sum":
+                for (k_child, w_child) in zip(k.kernels, k.weights):
+                    nodes_to_visit.append((k_child, w*w_child))
+            else:
+                new_kernels_list.append(k)
+                new_weights_list.append(w)
+        
+        self.kernels = copy.deepcopy(new_kernels_list)
+        self.weights = copy.deepcopy(new_weights_list)
+
+    def reduce(self):
+        new_kernels_list = []
+        new_weights_list = []
+        
+        kernels_to_visit = copy.deepcopy(self.kernels)
+        corresponding_weights = copy.deepcopy(self.weights)
+
+        nodes_to_visit = list(zip(kernels_to_visit, corresponding_weights))
+        
+        for k,w in  nodes_to_visit:
+            if k not in new_kernels_list:
+                new_kernels_list.append(k)
+                new_weights_list.append(w)
+            else :
+                ik = new_kernels_list.index(k)
+                new_weights_list[ik] += w
+
+        self.kernels = copy.deepcopy(new_kernels_list)
+        self.weights = copy.deepcopy(new_weights_list)
+
+    def reduce_flatten(self):
+        self.flatten()
+        self.reduce()
+
+        
+
+
+    
+    
+
+            
             
