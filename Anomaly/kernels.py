@@ -10,6 +10,7 @@ charatectics kernels
 """
 import numpy as np
 import copy
+from scipy import stats
 ### DEPRECATED
 # polynomial = lambda c, d:lambda X,Y : (np.sum(X*Y,axis=1) + c)**d
 #gaussian = lambda sigma: lambda X,Y : np.exp(-np.linalg.norm(X-Y,axis=1)**2/(2*sigma))
@@ -33,6 +34,8 @@ import copy
 
 
 ### New version
+
+
 
 class Kernel():
     """
@@ -79,6 +82,37 @@ class Kernel():
 
 
 
+    ### THEORICAL COMPUTATION
+    def normal_score(self, mu_p, sigma_p, mu_q, sigma_q, m, n):
+        return (np.sqrt(self.normal_variance(mu_p, sigma_p, mu_p, sigma_p, m, n)
+        /self.normal_variance(mu_p, sigma_p, mu_q, sigma_q, m, n))*stats.norm.ppf(1-alpha)
+        - np.sqrt(m/2*self.normal_MMD(mu_p, sigma_p, mu_q, sigma_q)/self.normal_variance(mu_p, sigma_p, mu_q, sigma_q, m, n)))
+
+    def normal_power(self, mu_p, sigma_p, mu_q, sigma_q, m, n):
+        return stats.norm.sf((np.sqrt(m)*(self.normal_thresohld(mu_p, sigma_p, alpha, m, n)
+                           - self.normal_MMD(mu_p, sigma_p, mu_q, sigma_q)))
+                          /np.sqrt(self.normal_variance(mu_p, sigma_p, mu_q, sigma_q, m, n)))
+
+    
+    def normal_thresohld(self, mu_p, sigma_p, alpha, m, n):
+        return (np.sqrt(2*self.normal_variance(mu_p, sigma_p, mu_q, sigma_q, m, n))
+                *stats.norm.ppf(1-alpha)/np.sqrt(m))
+
+    
+
+    def normal_variance(self, mu_p, sigma_p, mu_q, sigma_q, m, n):
+        return 2*(normal_partial_variance(self, mu_p, sigma_p, mu_q, sigma_q) 
+                + m/n*normal_partial_variance(self, mu_q, sigma_q, mu_p, sigma_p))
+
+    def normal_MMD(self, mu_p, sigma_p, mu_q, sigma_q ):
+        return None
+
+    def normal_partial_variance(self, mu_p, sigma_p, mu_q, sigma_q ):
+        return None
+
+
+
+
 
 
 
@@ -95,7 +129,34 @@ class Gaussian(Kernel):
         return np.exp(-np.linalg.norm(X-Y)**2/(2*self.parameters["omega"]**2))
 
 
+    ### THEORICAL COMPUTATION
+    def normal_MMD(self, mu_p, sigma_p, mu_q, sigma_q ):
+        omega = self.parameters['omega']
+        (np.sqrt(omega**2/(2*sigma_p**2+omega**2))
+                   + np.sqrt(omega**2/(2*sigma_q**2+omega**2))
+                   -2*np.sqrt(omega**2/(sigma_p**2+sigma_q**2+omega**2))*np.exp(-(mu_p-mu_q)**2/(2*(sigma_p**2+sigma_q**2+omega**2))))
 
+    def normal_partial_variance(self, mu_p, sigma_p, mu_q, sigma_q ):
+        return (self.normal_second_order_cross_normilized_kernel(mu_p, sigma_p, mu_q, sigma_q) 
+                - self.normal_first_order_cross_normilized_kernel(mu_p, sigma_p, mu_q, sigma_q))
+
+    def normal_second_order_cross_normilized_kernel(self, mu_p, sigma_p, mu_q, sigma_q):
+        omega = self.parameters['omega']
+        return (
+            np.sqrt(omega**2/(4*sigma_p**2 + omega**2))
+                
+                + 2*omega**2/(np.sqrt(omega**2+sigma_q**2)*np.sqrt(omega**2+sigma_q**2+2*sigma_p**2))*np.exp(-(mu_p-mu_q)**2/(omega**2+sigma_q**2+2*sigma_p**2))
+            
+                + 2*omega**2/(omega**2+sigma_q**2+sigma_p**2)*np.exp(-(mu_p-mu_q)**2/(omega**2+sigma_q**2+sigma_p**2))
+            
+                -4*np.sqrt(omega**4/(sigma_p**4+3*sigma_p**2*omega**2+2*sigma_p**2*sigma_q**2+omega**4+sigma_q**2*omega**2))
+                *np.exp(-(mu_p-mu_q)**2/(2*((sigma_p**4+3*sigma_p**2*omega**2+2*sigma_p**2*sigma_q**2+omega**4+sigma_q**2*omega**2)/(2*sigma_p**2+omega**2))))
+            )
+
+    def normal_first_order_cross_normilized_kernel(self, mu_p, sigma_p, mu_q, sigma_q):
+        omega = self.parameters['omega']
+         return (np.sqrt(omega**2/(2*sigma_p**2+omega**2)) 
+            - 2*np.sqrt(omega**2/(sigma_p**2+sigma_q**2+omega**2))*np.exp(-(mu_p-mu_q)**2/(2*(sigma_p**2+sigma_q**2+omega**2))))
 
 
 class Laplacian(Kernel):
@@ -192,6 +253,65 @@ class CCK(Kernel):
     def reduce_flatten(self):
         self.flatten()
         self.reduce()
+
+    
+    ### THEORICAL COMPUTATION
+    def normal_MMD(self, mu_p, sigma_p, mu_q, sigma_q ):
+        beta = np.vect(self.weights).reshape((-1,1))
+        return beta.T.dot(self.normal_vect_MMD(mu_p, sigma_p, mu_q, sigma_q))
+    
+    def normal_vect_MMD(self, mu_p, sigma_p, mu_q, sigma_q ): 
+        res = np.zeros(len(self.nb))
+        for i in range(nb):
+            res[i] = self.kernels[i].normal_MMD(mu_p, sigma_p, mu_q, sigma_q)
+
+
+    def normal_partial_variance(self, mu_p, sigma_p, mu_q, sigma_q ):
+        beta = np.vect(self.weights).reshape((-1,1))
+        return beta.T.dot(self.normal_partial_variance_Matrix(mu_p, sigma_p, mu_q, sigma_q )).dot(beta)
+
+
+    def normal_partial_variance_Matrix(self, mu_p, sigma_p, mu_q, sigma_q):
+        Mat = np.zeros((self.nb, self.nb)):
+
+        for i in range(self.nb):
+            for j in range(i):
+                res = self.normal_covariance(self.kernels[i], self.kernels[j], mu_p, sigma_p, mu_q, sigma_q)
+                Mat[i,j] = res
+                Mat[j, i] = res 
+            res = kernels[i].normal_partial_variance(mu_p, sigma_p, mu_q, sigma_q )
+            Mat[i, i] = res 
+        return Mat
+
+    def normal_covariance(self, kernel1, kernel2, mu_p, sigma_p, mu_q, sigma_q):
+        return (self.normal_cross_cross_normilized_kernel(kernel1, kernel2, mu_p, sigma_p, mu_q, sigma_q)
+                - kernel1.normal_first_order_cross_normilized_kernel(mu_p, sigma_p, mu_q, sigma_q)*
+                kernel2.normal_first_order_cross_normilized_kernel(mu_p, sigma_p, mu_q, sigma_q))
+
+    def normal_cross_cross_normilized_kernel(self, kernel1, kernel2, mu_p, sigma_p, mu_q, sigma_q):
+        if (kernel1.Name=="Gaussian" and kernel2.Name=="Gaussian"):
+            omega1 = kernel1.parameters['omega']
+            omega2 = kernel2.parameters['omega']
+            omega = np.sqrt((omega1**2*omega2**2)/(omega1**2 + omega2**2))
+            omegaSigma = np.sqrt(((omega1**2+sigma2**2)*(omega2**2+sigma2**2))/((omega1**2+sigma2**2) + (omega2**2+sigma2**2)))
+            
+            return (
+            np.sqrt(omega**2/(2*sigma_p**2 + omega**2))
+                
+                + 2*(np.sqrt(omega1**2/(omega1**2+sigma_q**2))*np.sqrt(omega2**2/(omega2**2+sigma_q**2))
+                *np.sqrt(omegaSigma**2/(omegaSigma**2+sigma_p**2)))*np.exp(-(mu_p-muq)**2/(2*(omegaSigma**2+sigma_p**2)))
+
+                + 2*np.sqrt(omega1**2/(omega1**2+sigma_q**2+sigma_p**2))*np.exp(-(mu_p-muq)**2/(2*(omega1**2+sigma_q**2+sigma_p**2)))
+                *np.sqrt(omega2**2/(omega2**2+sigma_q**2+sigma_p**2))*np.exp(-(mu_p-muq)**2/(2*(omega2**2+sigma_q**2+sigma_p**2)))
+
+                -2*np.sqrt(omega1**2*omega2**2/(sigma_p**4+sigma1**2*omega1**2+2*sigma_p**2*omega2**2+2*sigma_p**2*sigma_q**2+omega1**2*omega2**2+sigma_q**2*omega1**2))
+                *np.exp(-(mu_p-muq)**2/(2*((sigma_p**4+sigma_p**2*omega1**2+2*sigma_p**2*omega2**2+2*sigma_p**2*sigma_q**2+omega1**2*omega2**2+sigma_q**2*omega1**2)/(2*sigma_p**2+omega1**2))))
+            
+                -2*np.sqrt(omega2**2*omega1**2/(sigma_p**4+sigma_p**2*omega2**2+2*sigma_p**2*omega1**2+2*sigma_p**2*sigma_q**2+omega2**2*omega1**2+sigma_q**2*omega2**2))
+                *np.exp(-(mu_p-muq)**2/(2*((sigma_p**4+sigma_p**2*omega2**2+2*sigma_p**2*omega1**2+2*sigma_p**2*sigma_q**2+omega2**2*omega1**2+sigma_q**2*omega2**2)/(2*sigma_p**2+omega2**2))))
+            )
+
+
 
         
 
