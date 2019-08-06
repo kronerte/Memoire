@@ -173,7 +173,7 @@ def score_MC(kernel, law_p, law_q, m, alpha,n_boot_sigma=100, n_repeat_sigma=100
 def threshold_MC(kernel, law_p, law_q, m, n, alpha, size_gen = 100, finalSampleSize=1000, verbose = 1):
     sigma = np.sqrt( var_OMMD_MC(kernel, law_p, law_q, size_gen = size_gen,Lambda = n/m, finalSampleSize=finalSampleSize, verbose = verbose))
     invPhiAlpha = utils.inv_phi(1-alpha)
-    return np.sqrt(2)*sigma*invPhiAlpha/np.sqrt(m)
+    return sigma*invPhiAlpha/np.sqrt(m)
 
 
 
