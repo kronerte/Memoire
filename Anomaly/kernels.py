@@ -86,7 +86,7 @@ class Kernel():
     def normal_score(self, mu_p, sigma_p, mu_q, sigma_q, alpha, m, n):
         return (np.sqrt(self.normal_variance(mu_p, sigma_p, mu_p, sigma_p, m, n)
         /self.normal_variance(mu_p, sigma_p, mu_q, sigma_q, m, n))*stats.norm.ppf(1-alpha)
-        - np.sqrt(m/2*self.normal_MMD(mu_p, sigma_p, mu_q, sigma_q)/self.normal_variance(mu_p, sigma_p, mu_q, sigma_q, m, n)))
+        - np.sqrt(m)*self.normal_MMD(mu_p, sigma_p, mu_q, sigma_q)/np.sqrt(self.normal_variance(mu_p, sigma_p, mu_q, sigma_q, m, n)))
 
     def normal_power(self, mu_p, sigma_p, mu_q, sigma_q, alpha, m, n):
         return stats.norm.sf((np.sqrt(m)*(self.normal_thresohld(mu_p, sigma_p, alpha, m, n)
