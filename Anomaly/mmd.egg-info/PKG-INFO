@@ -1,0 +1,14 @@
+Metadata-Version: 2.1
+Name: mmd
+Version: 0.1.4
+Summary: Anomaly Detection with MMD
+Home-page: https://github.com/kronerte/Memoire
+Author: Etienne Kronert
+Author-email: etienne.kronert@inria.fr
+License: UNKNOWN
+Description: UNKNOWN
+Platform: UNKNOWN
+Classifier: Programming Language :: Python :: 3
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.7
+Description-Content-Type: text/markdown

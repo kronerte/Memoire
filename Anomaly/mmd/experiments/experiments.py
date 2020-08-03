@@ -9,8 +9,8 @@ import numpy as np
 import pandas as pd
 import inspect
 import pickle
-import Anomaly.estimators as estimators
-import Anomaly.MMD as MMD
+import mmd.estimators as estimators
+import mmd.MMD as MMD
 from scipy.stats import shapiro, norm
 import matplotlib.pyplot as plt
 from sklearn import metrics 

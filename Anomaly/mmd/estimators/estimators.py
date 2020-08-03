@@ -7,8 +7,8 @@ Created on Tue May  7 21:30:55 2019
 """
 
 import numpy as np
-import Anomaly.utils as utils
-import Anomaly.MMD as MMD
+import mmd.utils as utils
+import mmd.MMD as MMD
 
 
 def sampleMMD_MC(methodeMMD, kernel, law_p, law_q, m, n, finalSampleSize = 1000, verbose=1):
